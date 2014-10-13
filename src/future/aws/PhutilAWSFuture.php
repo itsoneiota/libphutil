@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group aws
- */
 abstract class PhutilAWSFuture extends FutureProxy {
 
   private $future;
@@ -57,15 +54,15 @@ abstract class PhutilAWSFuture extends FutureProxy {
       $params = $this->params;
 
       if (!$this->params) {
-        throw new Exception("You must setRawAWSQuery()!");
+        throw new Exception('You must setRawAWSQuery()!');
       }
 
       if (!$this->getAWSAccessKey()) {
-        throw new Exception("You must setAWSKeys()!");
+        throw new Exception('You must setAWSKeys()!');
       }
 
       $params['AWSAccessKeyId'] = $this->getAWSAccessKey();
-      $params['Version']        = '2011-12-15';
+      $params['Version']        = '2013-10-15';
       $params['Timestamp']      = date('c');
 
       $params = $this->sign($params);
@@ -89,7 +86,7 @@ abstract class PhutilAWSFuture extends FutureProxy {
     }
 
     if ($status->isError() || !$xml) {
-      if (!($status instanceof HTTPFutureResponseStatusHTTP)) {
+      if (!($status instanceof HTTPFutureHTTPResponseStatus)) {
         throw $status;
       }
 

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group testcase
- */
 final class PhutilMarkupTestCase extends PhutilTestCase {
 
   public function testTagDefaults() {
@@ -65,11 +62,65 @@ final class PhutilMarkupTestCase extends PhutilTestCase {
       (string)phutil_tag('br', array('y' => null)));
   }
 
+  public function testDefaultRelNoreferrer() {
+    $map = array(
+      // These should not have rel="nofollow" inserted implicitly.
+      '/' => false,
+      '/path/to/local.html' => false,
+      '#example' => false,
+      '' => false,
+
+      // These should get the implicit insertion.
+      'http://www.example.org/' => true,
+      '///evil.com/' => true,
+      '  http://www.example.org/' => true,
+      'ftp://filez.com' => true,
+      'mailto:santa@northpole.com' => true,
+      'tel:18005555555' => true,
+    );
+
+    foreach ($map as $input => $expect) {
+      $tag = phutil_tag(
+        'a',
+        array(
+          'href' => $input,
+        ),
+        'link');
+      $tag = (string)$tag;
+      $this->assertEqual($expect, (bool)preg_match('/noreferrer/', $tag));
+    }
+
+    // With an explicit `rel` present, we should not override it.
+    $tag = phutil_tag(
+      'a',
+      array(
+        'href' => 'http://www.example.org/',
+        'rel' => 'nofollow',
+      ),
+      'link');
+
+    $this->assertFalse((bool)preg_match('/noreferrer/', (string)$tag));
+
+    // For tags other than `a`, we should not insert `rel`.
+    $tag = phutil_tag(
+      'link',
+      array(
+        'href' => 'http://www.example.org/',
+      ),
+      'link');
+
+    $this->assertFalse((bool)preg_match('/noreferrer/', (string)$tag));
+  }
+
+
   public function testTagJavascriptProtocolRejection() {
     $hrefs = array(
       'javascript:alert(1)'         => true,
       'JAVASCRIPT:alert(2)'         => true,
-      '     javascript:alert(3)'    => true,
+
+      // NOTE: When interpreted as a URI, this is dropped because of leading
+      // whitespace.
+      '     javascript:alert(3)'    => array(true, false),
       '/'                           => false,
       '/path/to/stuff/'             => false,
       ''                            => false,
@@ -108,6 +159,10 @@ final class PhutilMarkupTestCase extends PhutilTestCase {
 
     foreach (array(true, false) as $use_uri) {
       foreach ($hrefs as $href => $expect) {
+        if (is_array($expect)) {
+          $expect = ($use_uri ? $expect[1] : $expect[0]);
+        }
+
         if ($use_uri) {
           $href = new PhutilURI($href);
         }
@@ -189,23 +244,22 @@ final class PhutilMarkupTestCase extends PhutilTestCase {
           hsprintf('</div>'),
         )));
 
-      $this->assertEqual(
-        '<div><br /><hr /><wbr /></div>',
-        phutil_tag(
-          'div',
-          array(
-          ),
+    $this->assertEqual(
+      '<div><br /><hr /><wbr /></div>',
+      phutil_tag(
+        'div',
+        array(),
+        array(
           array(
             array(
+              phutil_tag('br'),
               array(
-                phutil_tag('br'),
-                array(
-                  phutil_tag('hr'),
-                ),
-                phutil_tag('wbr'),
+                phutil_tag('hr'),
               ),
+              phutil_tag('wbr'),
             ),
-          ))->getHTMLContent());
-    }
+          ),
+        ))->getHTMLContent());
+  }
 
 }
